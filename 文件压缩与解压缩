@@ -1,0 +1,467 @@
+//heap.h
+
+#pragma once
+#include <iostream>
+#include <vector>
+using namespace std;
+
+template <class T>
+struct Less
+{
+	bool operator()(const T& l,const T& r)
+	{
+		return l < r;
+	}
+};
+
+template <class T>
+struct Greater
+{
+	bool operator()(const T& l,const T& r)
+	{
+		return l > r;
+	}
+};
+
+template<class T>
+struct Less<T*>
+{
+	bool operator()(T* l,T* r)
+	{
+		return l->_weight < r->_weight;
+	}
+};
+
+template <class T,class Container=Greater<T>>
+class _heap
+{
+	Container _con;
+public:
+	_heap()
+	{
+	}
+
+	_heap(T* a,size_t sz)
+	{
+		for(int i=0;i<sz;i++)
+		{
+			_a.push_back(a[i]);
+		}
+	}
+
+	~_heap()
+	{
+
+	}
+  
+	void _Max_Heap()
+	{
+		for(int i=(_a.size()-2)/2;i>=0;i--)
+		{
+			_AdjustDown(i);
+		}
+	}
+
+	void _Min_Heap()
+	{
+		for(int i=1;i<_a.size();i++)
+		{
+			_AdjustUp(i);
+		}
+	}
+
+	void Push(const T& x)
+	{
+		_a.push_back(x);
+		_AdjustUp(_a.size()-1);
+	}
+
+	void Pop()
+	{
+		if(!_a.empty())
+		{
+			swap(_a[0],_a[_a.size()-1]);
+			_a.pop_back();
+			_AdjustDown(0);
+		}
+	}
+
+	bool Empty()
+	{
+		return _a.empty();
+	}
+
+	size_t Size()
+	{
+		return _a.size();
+	}
+  
+	T& Top() 
+	{
+		return _a[0];
+	}
+protected:
+	void _AdjustDown(size_t parent)
+	{
+		size_t child=parent*2+1;
+		while(child <_a.size())
+		{
+			if(child+1 < _a.size() && _con(_a[child+1],_a[child]))
+			{
+				child++;
+			}
+			else if(_con(_a[child],_a[parent]))
+			{
+				swap(_a[child],_a[parent]);
+				parent=child;
+				child=parent*2+1;
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+
+	void _AdjustUp(size_t child)
+	{
+		size_t parent=(child-1)/2;
+		while(child > 0)
+		{
+			if(_con(_a[child],_a[parent]))
+			{
+				swap(_a[parent],_a[child]);
+				child=parent;
+				parent=(child-1)/2;
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+
+private:
+	vector<T> _a;  
+};
+
+
+//Huffman.h
+
+#pragma once
+#include <iostream>
+#include "heap.h"
+using namespace std;
+template <class T>
+struct HuffmanNode
+{
+	T _weight;               //权值
+	HuffmanNode<T>* _left;   //左孩子节点
+	HuffmanNode<T>* _right;  //右孩子节点
+	//HuffmanNode<T>* _parent; //双亲节点
+	HuffmanNode(const T& w)
+		:_left(NULL)
+		,_right(NULL)
+		//,_parent(NULL)
+		,_weight(w)
+	{ }
+};
+
+template <class T>
+class HuffmanTree
+{
+	typedef HuffmanNode<T> Node;
+public:
+	HuffmanTree()
+		:_root(NULL)
+	{ }
+
+	~HuffmanTree()
+	{ }
+
+	HuffmanTree(T* a ,size_t size,const T& invalid)
+	{
+		_root=_CreateHuffmantree(a,size,invalid);
+	}
+
+	Node* GetRoot()
+	{
+		return _root;
+	}
+protected:
+	Node* _CreateHuffmantree(T* a ,size_t size,const T& invalid)
+	{
+		_heap<Node*,Less<Node*>>  MinHeap;
+		for(size_t i=0;i<size;i++)
+		{
+			if(a[i] != invalid)
+			{
+				Node* tmp=new Node(a[i]);
+				MinHeap.Push(tmp);
+			}
+		}
+		//创建哈夫曼树
+		Node* parent=NULL;
+		while(MinHeap.Size()>1)
+		{
+			//取堆顶数据为左孩子结点
+			Node* left=MinHeap.Top();
+			MinHeap.Pop();
+			Node* right=NULL;
+			if(!MinHeap.Empty())
+			{
+				right=MinHeap.Top();
+				MinHeap.Pop();
+			}
+			if(right)
+				parent=new Node(left->_weight+right->_weight);
+			else
+				parent=new Node(left->_weight);
+			
+			parent->_left=left;
+			parent->_right=right;
+			//小顶堆为空哈夫曼树创建完成
+			if(MinHeap.Empty())
+				return parent;
+			//完成双亲节点的创建后并把双亲节点压入堆底
+			MinHeap.Push(parent);
+		}
+		return NULL;
+	}
+private:
+	Node* _root;
+};
+
+
+//FileCompression.h
+
+#pragma once
+#include <iostream>
+#include "Huffman.h"
+#include <assert.h>
+#include <string>
+using namespace std;
+typedef long  long  LongType;
+struct CharInfo
+{
+	unsigned char _ch;      //字符,char时会出现乱码
+	string _code;  //哈夫曼编码
+	LongType _count;  //字符出现次数
+	CharInfo(const LongType count=0)
+		:_count(count)
+	{
+	}
+  
+	CharInfo(const char ch)
+		:_ch(ch)
+	{
+	}
+
+	bool operator!=(const CharInfo& c)
+	{
+		return _count != c._count;
+	}
+
+	CharInfo operator+(const CharInfo& c)
+	{
+		return CharInfo(_count+c._count);
+	}
+
+	bool operator<(const CharInfo& c)
+	{
+		return _count < c._count;
+	}
+};
+
+
+class FileCompression
+{
+public:
+	FileCompression()
+	{
+		for(int i=0;i<256;i++)
+		{
+			_Info[i]._ch=i;   
+			_Info[i]._count=0;
+		}
+	}
+
+	void Compress(const char* filename)  
+    {  
+		assert(filename);
+        FILE* fread = fopen(filename,"rb");  
+		assert(fread);
+        if (fread == NULL)  
+        {  
+            cout << "待压缩文件不存在" << endl;  
+            return;  
+        }  
+		//1.统计各字符出现的次数  
+        unsigned char ch = fgetc(fread);   
+        while (!feof(fread)) 
+        {  
+            _Info[ch]._count++;  
+            ch = fgetc(fread);  
+        }  
+		//2.生成哈夫曼树
+        HuffmanTree<CharInfo> h(_Info, 256, CharInfo());  
+        HuffmanNode<CharInfo>* root = h.GetRoot();  
+		//3.生成哈夫曼树编码
+        string str; 
+        HuffmanCode(root, str);  
+		//4.压缩文件
+        fseek(fread, 0, SEEK_SET);  
+        ch = fgetc(fread);  
+        unsigned char value = 0;   
+        int _bit = 7;   
+        //4.1打开文件写压缩后的编码  
+        string write=filename;  
+        write+=".compress";  
+        FILE* fwrite = fopen(write.c_str(), "wb");  
+        while (!feof(fread))  
+        {  
+            
+            const char* cur = _Info[ch]._code.c_str();  
+            while (*cur)  
+            {  
+                if (_bit >= 0)  
+                {  
+                    value = value | ((*cur - '0') << _bit);  
+                    _bit--;  
+                }  
+                if (_bit< 0)  
+                {  
+                    fputc(value, fwrite);  
+                    _bit = 7;  
+                    value = 0;  
+                }  
+                cur++;  
+            }  
+            ch = fgetc(fread);  
+        }  
+        fputc(value, fwrite);//最后一个字节没写满8位也要把data写入文件 
+        //4.2写配置文件  
+        WriteConfig(filename);  
+        fclose(fread);  
+        fclose(fwrite);  
+		cout<<"压缩成功"<<endl;
+    }  
+
+	void UnCompress(const char* filename)
+	{
+		assert(filename);
+		//1.读配置文件
+		FILE *pf=fopen(filename,"rb");
+		if(pf == NULL)
+		{
+			cout<<"解压缩文件不存在"<<endl;
+			return;
+		}
+		string configfile=(string)filename;  //配置文件
+		string uncompressionfile=(string)filename; //解压后文件
+
+		size_t _last=configfile.find_last_of(".");
+		if(_last < configfile.size())
+		{
+			configfile.erase(_last);
+			uncompressionfile.erase(_last);
+		}
+
+		configfile+=".config";
+		FILE *fconfig=fopen(configfile.c_str(),"rb");
+		assert(fconfig);
+
+		//PS:解压后文件
+		uncompressionfile+="._com";
+		FILE *fin=fopen(uncompressionfile.c_str(),"wb");
+		assert(fin);
+
+		char buff[20]={0};
+		unsigned char ch=fgetc(fconfig);
+		while(!feof(fconfig))
+		{
+			fgetc(fconfig);
+			fgets(buff,20,fconfig);
+			this->_Info[ch]._count=(LongType)atoi(buff);
+			ch=fgetc(fconfig);
+		}
+		//2.构建哈夫曼树 
+		HuffmanTree<CharInfo> hf(_Info,256,CharInfo());
+		HuffmanNode<CharInfo> *root=hf.GetRoot();
+		HuffmanNode<CharInfo> *cur=root;
+		//3.解压缩
+		ch=fgetc(pf);
+		int count=root->_weight._count;
+		int pos=7;
+		while(count)
+		{
+			unsigned int tmp=1;
+			while(pos >=0)
+			{
+				if(ch & (tmp << pos))
+				{
+					cur=cur->_right;
+					--pos;
+				}
+				else
+				{
+					cur=cur->_left;
+					--pos;
+				}
+				if(cur->_left == NULL && cur->_right == NULL)
+				{
+					fputc(cur->_weight._ch,fin);
+					cur=root;
+					count--;
+					if(!count)
+						break;
+				}
+			}
+			pos=7;
+			ch=fgetc(pf);
+		}
+		fclose(pf);
+		fclose(fconfig);
+		fclose(fin);
+		cout<<"解压缩成功"<<endl;
+	} 
+protected:
+	void HuffmanCode(HuffmanNode<CharInfo>* root,string& code)
+	{
+		if(root== NULL)
+			return;
+		if(root->_left == NULL && root->_right == NULL)
+		{
+			_Info[root->_weight._ch]._code=code;
+			return;
+		}
+		HuffmanCode(root->_left,code+'0');
+		HuffmanCode(root->_right,code+'1');
+	}
+	
+	void WriteConfig(const char* filename)  
+    {  
+        string conf(filename);  
+        conf+=".config";  
+        FILE* fcon = fopen(conf.c_str(), "wb");  
+        for (int i = 0; i < 256; ++i)  
+        {  
+  
+            if (_Info[i]._count)  
+            {  
+                fputc(_Info[i]._ch, fcon);  
+                fputc(',', fcon);  
+                char count[100];  
+                _itoa(_Info[i]._count, count, 10);  
+                fputs(count, fcon);  
+                fputc(',', fcon);  
+                fputs(_Info[i]._code.c_str(), fcon);  
+                fputc('\n', fcon);  
+            }  
+        }  
+        fclose(fcon);  
+    }  
+private:
+	CharInfo _Info[256];
+};
+
